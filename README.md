@@ -4,7 +4,6 @@ A small, fast web app for tracking how many practice questions you get **right**
 
 **[Open the live app](https://rakshitha-doddamane.github.io/Security-Score-Tracker/)**
 
-![Score tracker main screen](screenshots/tracker.png)
 
 ## Why I built it
 
