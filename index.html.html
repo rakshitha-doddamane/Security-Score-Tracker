@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security+ Score Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;900&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #E8EDEA;
+    --surface: #F6F8F6;
+    --ink: #15202B;
+    --muted: #55626D;
+    --line: #C3CDC8;
+    --right: #18744A;
+    --right-bg: #D3EADB;
+    --wrong: #B42318;
+    --wrong-bg: #F5D8D3;
+    --stamp: #3A2FA0;
+    --btn-ink: #F6F8F6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #10161B;
+      --surface: #18212A;
+      --ink: #E6ECEF;
+      --muted: #97A5B0;
+      --line: #2C3843;
+      --right: #4CC38A;
+      --right-bg: #163526;
+      --wrong: #FF7B6E;
+      --wrong-bg: #3D1C19;
+      --stamp: #A29AFF;
+      --btn-ink: #10161B;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #10161B;
+    --surface: #18212A;
+    --ink: #E6ECEF;
+    --muted: #97A5B0;
+    --line: #2C3843;
+    --right: #4CC38A;
+    --right-bg: #163526;
+    --wrong: #FF7B6E;
+    --wrong-bg: #3D1C19;
+    --stamp: #A29AFF;
+    --btn-ink: #10161B;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Source Sans 3", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 17px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 28px 18px 72px; }
+
+  h1, h2, .num {
+    font-family: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  }
+  h1 { font-size: clamp(28px, 6vw, 40px); line-height: 1.1; margin: 0 0 6px; font-weight: 900; letter-spacing: -0.02em; }
+  h2 { font-size: 22px; margin: 0 0 12px; font-weight: 700; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); margin: 0 0 24px; max-width: 52ch; }
+
+  label.field { display: block; font-weight: 600; margin-bottom: 6px; }
+  input[type="text"] {
+    width: 100%;
+    font: inherit;
+    padding: 12px 14px;
+    color: var(--ink);
+    background: var(--surface);
+    border: 2px solid var(--line);
+    border-radius: 6px;
+  }
+  input[type="text"]:focus-visible { outline: 3px solid var(--stamp); outline-offset: 1px; border-color: var(--stamp); }
+  .hint { color: var(--muted); font-size: 15px; margin: 6px 0 0; }
+
+  .counters { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 22px; }
+  .tally { position: relative; }
+  .big {
+    width: 100%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2px;
+    padding: 22px 10px 18px;
+    min-height: 210px;
+    font: inherit;
+    color: var(--ink);
+    border-radius: 10px;
+    border: 3px solid;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: transform .08s ease;
+  }
+  .big:active { transform: scale(.97); }
+  .big:focus-visible, .btn:focus-visible, .undo:focus-visible, .link:focus-visible { outline: 3px solid var(--stamp); outline-offset: 3px; }
+  .big.right { background: var(--right-bg); border-color: var(--right); }
+  .big.wrong { background: var(--wrong-bg); border-color: var(--wrong); }
+  .big svg { width: 34px; height: 34px; }
+  .big.right svg { color: var(--right); }
+  .big.wrong svg { color: var(--wrong); }
+  .big .num { font-size: clamp(64px, 19vw, 118px); font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+  .big .name { font-weight: 600; font-size: 18px; }
+
+  .undo {
+    position: absolute; top: 8px; right: 8px;
+    font: inherit; font-weight: 600; font-size: 15px;
+    padding: 6px 10px;
+    background: var(--surface);
+    color: var(--ink);
+    border: 2px solid var(--line);
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .undo:disabled { opacity: .4; cursor: default; }
+
+  .summary {
+    margin-top: 16px;
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 2px solid var(--line);
+    border-radius: 10px;
+  }
+  .summary-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .pct { font-family: "Archivo", system-ui, sans-serif; font-weight: 900; font-size: 38px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .bar { height: 14px; border-radius: 7px; background: var(--wrong-bg); border: 1px solid var(--line); overflow: hidden; margin-top: 12px; }
+  .bar > span { display: block; height: 100%; width: 0%; background: var(--right); transition: width .2s ease; }
+
+  .actions { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+  .btn {
+    font: inherit; font-weight: 700;
+    padding: 14px 22px;
+    border-radius: 8px;
+    border: 2px solid var(--ink);
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .btn.primary { background: var(--ink); color: var(--btn-ink); flex: 1 1 220px; }
+  .btn.ghost { background: transparent; color: var(--ink); flex: 0 0 auto; }
+  .btn:disabled { opacity: .4; cursor: default; }
+
+  section.block { margin-top: 44px; }
+
+  .papers { overflow-x: auto; border: 2px solid var(--line); border-radius: 10px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; min-width: 460px; }
+  th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+  th { font-weight: 600; color: var(--muted); font-size: 15px; }
+  tr:last-child td { border-bottom: 0; }
+  td.paper-name { font-weight: 600; }
+
+  .log { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .entry {
+    display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 2px solid var(--line);
+    border-radius: 10px;
+  }
+  .entry .title { font-weight: 600; }
+  .entry .when { color: var(--muted); font-size: 15px; }
+  .entry .score { font-family: "Archivo", system-ui, sans-serif; font-weight: 700; font-size: 20px; text-align: right; font-variant-numeric: tabular-nums; }
+  .entry .score .r { color: var(--right); }
+  .entry .score .w { color: var(--wrong); }
+  .entry .score .p { margin-left: 8px; }
+  .link {
+    font: inherit; font-size: 15px; font-weight: 600;
+    background: none; border: 0; padding: 4px 0;
+    color: var(--muted); cursor: pointer; text-decoration: underline;
+    justify-self: end;
+  }
+  .link.armed { color: var(--wrong); }
+  .empty { color: var(--muted); padding: 18px; border: 2px dashed var(--line); border-radius: 10px; }
+
+  .stamp-layer {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none;
+    z-index: 10;
+  }
+  .stamp {
+    display: none;
+    text-align: center;
+    padding: 14px 28px 12px;
+    color: var(--stamp);
+    border: 6px double var(--stamp);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    transform: rotate(-9deg);
+    font-family: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  }
+  .stamp .big-word { font-size: clamp(44px, 14vw, 74px); font-weight: 900; letter-spacing: .04em; line-height: 1; }
+  .stamp .stamp-paper { font-weight: 700; font-size: 18px; margin-top: 6px; max-width: 18em; overflow-wrap: anywhere; }
+  .stamp .stamp-time { font-weight: 500; font-size: 16px; }
+  .stamp.show { display: block; animation: thump 2.1s ease forwards; }
+  @keyframes thump {
+    0% { opacity: 0; transform: rotate(-9deg) scale(1.9); }
+    14% { opacity: .95; transform: rotate(-9deg) scale(1); }
+    22% { transform: rotate(-9deg) scale(1.04); }
+    28% { transform: rotate(-9deg) scale(1); }
+    78% { opacity: .95; }
+    100% { opacity: 0; transform: rotate(-9deg) scale(1); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .stamp.show { animation: fade 1.8s ease forwards; }
+    @keyframes fade { 0% { opacity: 0; } 15% { opacity: .95; } 80% { opacity: .95; } 100% { opacity: 0; } }
+    .big, .bar > span { transition: none; }
+  }
+
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .note { margin-top: 30px; color: var(--muted); font-size: 15px; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>Security+ score tracker</h1>
+  <p class="sub">Tap Right or Wrong after each question. Save the score when you finish a paper, then reset for the next one.</p>
+
+  <label class="field" for="paper">Paper name</label>
+  <input id="paper" type="text" list="paper-list" placeholder="e.g. Practice Test 1" autocomplete="off" maxlength="60">
+  <datalist id="paper-list"></datalist>
+  <p class="hint">Use the same name each time you retake a paper to see your progress.</p>
+
+  <div class="counters">
+    <div class="tally">
+      <button class="big right" id="btn-right" type="button" aria-label="Add one right answer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>
+        <span class="num" id="n-right">0</span>
+        <span class="name">Right</span>
+      </button>
+      <button class="undo" id="undo-right" type="button" aria-label="Remove one right answer">−1</button>
+    </div>
+    <div class="tally">
+      <button class="big wrong" id="btn-wrong" type="button" aria-label="Add one wrong answer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        <span class="num" id="n-wrong">0</span>
+        <span class="name">Wrong</span>
+      </button>
+      <button class="undo" id="undo-wrong" type="button" aria-label="Remove one wrong answer">−1</button>
+    </div>
+  </div>
+
+  <div class="summary" aria-live="polite">
+    <div class="summary-row">
+      <div><span id="answered">0</span> answered</div>
+      <div class="pct" id="pct">–</div>
+    </div>
+    <div class="bar" aria-hidden="true"><span id="bar"></span></div>
+  </div>
+
+  <div class="actions">
+    <button class="btn primary" id="save" type="button">Save score</button>
+    <button class="btn ghost" id="reset" type="button">Reset counters</button>
+  </div>
+  <p class="hint" id="keys">On a keyboard, press R for right and W for wrong.</p>
+
+  <section class="block">
+    <h2>Progress by paper</h2>
+    <div id="papers"></div>
+  </section>
+
+  <section class="block">
+    <h2>Saved scores</h2>
+    <ul class="log" id="log"></ul>
+  </section>
+
+  <p class="note" id="storage-note" hidden>Your browser is blocking storage, so scores will be lost when you close this page.</p>
+</main>
+
+<div class="stamp-layer" aria-hidden="true">
+  <div class="stamp" id="stamp">
+    <div class="big-word">SAVED</div>
+    <div class="stamp-paper" id="stamp-paper"></div>
+    <div class="stamp-time" id="stamp-time"></div>
+  </div>
+</div>
+<div class="sr" role="status" id="announce"></div>
+
+<script>
+(function () {
+  var KEY = "secplus-score-tracker-v1";
+  var storageOk = true;
+  var state = { paper: "", right: 0, wrong: 0, history: [] };
+  var armedId = null, armTimer = null, stampTimer = null;
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) {
+        var s = JSON.parse(raw);
+        if (s && typeof s === "object") {
+          state.paper = typeof s.paper === "string" ? s.paper : "";
+          state.right = Math.max(0, parseInt(s.right, 10) || 0);
+          state.wrong = Math.max(0, parseInt(s.wrong, 10) || 0);
+          state.history = Array.isArray(s.history) ? s.history.filter(function (h) {
+            return h && typeof h.paper === "string" && typeof h.ts === "number";
+          }) : [];
+        }
+      }
+    } catch (e) { storageOk = false; }
+    try { localStorage.setItem(KEY + "-test", "1"); localStorage.removeItem(KEY + "-test"); } catch (e) { storageOk = false; }
+  }
+  function persist() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { storageOk = false; }
+    document.getElementById("storage-note").hidden = storageOk;
+  }
+
+  function $(id) { return document.getElementById(id); }
+  function pctOf(r, w) { var t = r + w; return t ? Math.round(r / t * 100) : null; }
+  function fmt(ts) {
+    try {
+      return new Date(ts).toLocaleString(undefined, { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
+    } catch (e) { return new Date(ts).toString(); }
+  }
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined) n.textContent = text;
+    return n;
+  }
+
+  function renderCounters() {
+    $("n-right").textContent = state.right;
+    $("n-wrong").textContent = state.wrong;
+    var total = state.right + state.wrong;
+    var p = pctOf(state.right, state.wrong);
+    $("answered").textContent = total;
+    $("pct").textContent = p === null ? "–" : p + "%";
+    $("bar").style.width = (p === null ? 0 : p) + "%";
+    $("undo-right").disabled = state.right === 0;
+    $("undo-wrong").disabled = state.wrong === 0;
+    $("save").disabled = total === 0;
+    $("reset").disabled = total === 0;
+  }
+
+  function renderPapers() {
+    var box = $("papers");
+    box.textContent = "";
+    var groups = {}, order = [];
+    state.history.slice().sort(function (a, b) { return a.ts - b.ts; }).forEach(function (h) {
+      if (!groups[h.paper]) { groups[h.paper] = []; order.push(h.paper); }
+      groups[h.paper].push(h);
+    });
+    var dl = $("paper-list");
+    dl.textContent = "";
+    order.forEach(function (name) { var o = document.createElement("option"); o.value = name; dl.appendChild(o); });
+
+    if (!order.length) {
+      box.appendChild(el("div", "empty", "No saved scores yet. Answer some questions and press Save score."));
+      return;
+    }
+    var wrap = el("div", "papers");
+    var table = el("table");
+    var head = el("tr");
+    ["Paper", "Attempts", "Latest", "Best", "Average"].forEach(function (t) { head.appendChild(el("th", "", t)); });
+    var thead = el("thead"); thead.appendChild(head); table.appendChild(thead);
+    var tbody = el("tbody");
+    order.forEach(function (name) {
+      var list = groups[name];
+      var pcts = list.map(function (h) { return pctOf(h.right, h.wrong) || 0; });
+      var latest = pcts[pcts.length - 1];
+      var best = Math.max.apply(null, pcts);
+      var avg = Math.round(pcts.reduce(function (a, b) { return a + b; }, 0) / pcts.length);
+      var tr = el("tr");
+      tr.appendChild(el("td", "paper-name", name));
+      tr.appendChild(el("td", "", String(list.length)));
+      tr.appendChild(el("td", "", latest + "%"));
+      tr.appendChild(el("td", "", best + "%"));
+      tr.appendChild(el("td", "", avg + "%"));
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    box.appendChild(wrap);
+  }
+
+  function renderLog() {
+    var ul = $("log");
+    ul.textContent = "";
+    if (!state.history.length) {
+      var li = el("li", "empty", "Saved scores will appear here with the date and time.");
+      ul.appendChild(li);
+      return;
+    }
+    state.history.slice().sort(function (a, b) { return b.ts - a.ts; }).forEach(function (h) {
+      var li = el("li", "entry");
+      li.appendChild(el("div", "title", h.paper));
+      var score = el("div", "score");
+      score.appendChild(el("span", "r", h.right + " right"));
+      score.appendChild(document.createTextNode(" · "));
+      score.appendChild(el("span", "w", h.wrong + " wrong"));
+      score.appendChild(el("span", "p", (pctOf(h.right, h.wrong) || 0) + "%"));
+      li.appendChild(score);
+      li.appendChild(el("div", "when", fmt(h.ts)));
+      var del = el("button", "link" + (armedId === h.id ? " armed" : ""), armedId === h.id ? "Tap again to delete" : "Delete");
+      del.type = "button";
+      del.setAttribute("aria-label", "Delete saved score for " + h.paper + " from " + fmt(h.ts));
+      del.addEventListener("click", function () {
+        if (armedId === h.id) {
+          state.history = state.history.filter(function (x) { return x.id !== h.id; });
+          armedId = null; clearTimeout(armTimer);
+          persist(); renderPapers(); renderLog();
+        } else {
+          armedId = h.id;
+          clearTimeout(armTimer);
+          armTimer = setTimeout(function () { armedId = null; renderLog(); }, 3500);
+          renderLog();
+        }
+      });
+      li.appendChild(del);
+      ul.appendChild(li);
+    });
+  }
+
+  function announce(t) { $("announce").textContent = ""; setTimeout(function () { $("announce").textContent = t; }, 30); }
+
+  function addRight() { state.right++; persist(); renderCounters(); }
+  function addWrong() { state.wrong++; persist(); renderCounters(); }
+
+  $("btn-right").addEventListener("click", addRight);
+  $("btn-wrong").addEventListener("click", addWrong);
+  $("undo-right").addEventListener("click", function () { if (state.right > 0) { state.right--; persist(); renderCounters(); } });
+  $("undo-wrong").addEventListener("click", function () { if (state.wrong > 0) { state.wrong--; persist(); renderCounters(); } });
+
+  $("paper").addEventListener("input", function (e) { state.paper = e.target.value; persist(); });
+
+  $("reset").addEventListener("click", function () {
+    state.right = 0; state.wrong = 0;
+    persist(); renderCounters();
+    announce("Counters reset");
+  });
+
+  $("save").addEventListener("click", function () {
+    if (state.right + state.wrong === 0) return;
+    var name = (state.paper || "").trim() || "Untitled paper";
+    var ts = Date.now();
+    state.history.push({ id: ts.toString(36) + Math.random().toString(36).slice(2, 6), paper: name, right: state.right, wrong: state.wrong, ts: ts });
+    state.paper = name === "Untitled paper" && !(state.paper || "").trim() ? "" : name;
+    persist(); renderPapers(); renderLog();
+
+    var st = $("stamp");
+    $("stamp-paper").textContent = name + " — " + state.right + " right, " + state.wrong + " wrong";
+    $("stamp-time").textContent = fmt(ts);
+    st.classList.remove("show");
+    void st.offsetWidth;
+    st.classList.add("show");
+    clearTimeout(stampTimer);
+    stampTimer = setTimeout(function () { st.classList.remove("show"); }, 2200);
+    announce("Score saved for " + name);
+  });
+
+  document.addEventListener("keydown", function (e) {
+    var t = e.target;
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    var k = e.key.toLowerCase();
+    if (k === "r") { addRight(); }
+    else if (k === "w") { addWrong(); }
+  });
+
+  load();
+  $("paper").value = state.paper;
+  document.getElementById("storage-note").hidden = storageOk;
+  renderCounters(); renderPapers(); renderLog();
+})();
+</script>
+</body>
+</html>
